@@ -1,16 +1,16 @@
 ## 流程图：
 
-![](site\整体架构.svg)
+![](.\site\整体架构.svg)
 
 ##  目录路径：
 
-![](site\image-2.png)
+![](.\site\image-2.png)
 
 ### 1、 linux端部署梳理
 
 #### 1 确定所有服务都关闭，以防干扰
 
-![](site\image-1.png)
+![](.\site\image-1.png)
 
 #### 2 把代码上传到工作目录
 
