@@ -1,16 +1,17 @@
 ## 流程图：
 
-![](.\site\整体架构.svg)
+<img src=".\site\整体架构.svg" width = "110%" />
 
 ##  目录路径：
 
-![](.\site\image-2.png)
+<img src=".\site\image-2.png" width = "60%" />
+
 
 ### 1、 linux端部署梳理
 
 #### 1 确定所有服务都关闭，以防干扰
 
-![](.\site\image-1.png)
+<img src=".\site\image-1.png" width = "60%" />
 
 #### 2 把代码上传到工作目录
 
