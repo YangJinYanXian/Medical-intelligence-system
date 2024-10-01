@@ -1,6 +1,6 @@
 ## 流程图：
 
-<img src=".\site\整体架构.svg" width = "110%" />
+<img src=".\site\整体架构.svg" width = "150%" />
 
 ##  目录路径：
 
@@ -11,7 +11,7 @@
 
 #### 1 确定所有服务都关闭，以防干扰
 
-<img src=".\site\image-1.png" width = "60%" />
+<img src=".\site\image-1.png" width = "80%" />
 
 #### 2 把代码上传到工作目录
 
