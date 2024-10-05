@@ -1,5 +1,10 @@
 ## 流程图：
 
+<img src=".\xiaoguotu.png" width = "60%" />
+
+
+## 流程图：
+
 <img src=".\site\整体架构.svg" width = "150%" />
 
 ##  目录路径：
