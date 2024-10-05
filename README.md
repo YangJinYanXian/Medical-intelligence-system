@@ -1,4 +1,4 @@
-## 流程图：
+## 效果图：
 
 <img src=".\xiaoguotu.png" width = "60%" />
 
