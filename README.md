@@ -2,17 +2,123 @@
 
 ------
 
+#### 改进点 使用生成式模型
+
+- 第一: 采用PGN新的架构, 力求可以将描述病况细节的单词直接生成摘要.
+- 第二: 如果模型具备第一点的能力, 可以copy原始文本的单词, 那么将极大的解决seq2seq的OOV问题.
+- 第三: 引入机制来控制和跟踪原始文本的重复范围, 减少生成摘要的重复问题.
+
+<img src=".\site\PGN.png" width = "100%" />
 
 
 
+PGN架构的组成和运行机制**（1个指针，三个分布）**
+
+-   GN架构图, 基本上是在seq2seq架构基础上多了一层
+-   先计算出来一个指针p_gen
+    -   用(1 - p_gen)乘以Attention Distribution, 得到原始文本的信息
+    -   用p_gen乘以Vocabulary Distribution, 得到生成文本的信息
+    -   这两部分加和, 得到Final Distribution
+
+### 数据处理
+
+##### 模型生成摘要文本的流程
+
+```
+1 输入一段sorce文本，对sorce进行encode编码，求中间语义张量C、最后一个隐藏层输出；
+2 1个时间步1个时间步的生成摘要文本（eg：最大摘要长度40个，超过40没有结束就强制结束）
+    2-1 attention求预测单词的注意力权重分布，注意力结果表示
+    2-2 然后再decode解码 求 【预测单词的分布-最后的单词分布】
+    
+    在2-2环节中，PGN模型生成摘要文本的范围可以在字典中，也可以在oov列表中
+    
+3 所以PGN在解码的时，是需要原文source中的OOV单词；
+    也就是每一段文本进行摘要先生成各自的oov单词列表
+```
+
+##### PGN数据的特殊性分析
+
+产生的摘要单词如果不在字典中（ eg：20004个单词中的一个），则PGN模型就无法从原文中copy单词
+
+为了让PGN模型能从原文中copy单词，需要把原文中的单词，组成oov列表
+
+结论：每一篇原始文档如果要提取摘要，都是需要source2id，返回两个列表：word2id对应的列表，oov列表
+
+这个工作需要通过DataLoader的自定义函数collate_fn函数来实现。
+
+##### 工具函数
+
+    原始文本映射成ids张量的函数source2ids(source_words, vocab)
+    摘要文本映射成数字化ids函数abstract2ids(abstract_words, vocab, source_oovs)
+    将输出张量ids结果映射成文本函数outputids2words(id_list, source_oovs, vocab)
+    
+    向小顶堆数据结构添加元素的函数add2heap(heap, item, k)
+    
+    将文本中OOV单词替换成的函数replace_oovs(in_tensor, vocab)
+    获取模型中超参数信息的函数config_info(config)
+### 模型评估
+
+目标：同时观察 训练集 和 验证集 的损失变化情况，为训练模型提供决策
+
+思路：
+
+- 创建PGN模型对象，初始化字典类
+
+- 加载已经训练好的模型
+
+- 调用评估函数，对验证器数据进行摘要，并计算验证集上的loss
+
+  - DataLoader方式，按照加载验证集数据
+
+  - 循环送入model进行评估，并进行损失计算
+
+    - ```
+       遍历测试数据进行评估
+      for batch, data in enumerate(tqdm(val_dataloader)):
+          x, y, x_len, y_len, oov, len_oovs = data
+          if d10_config.is_cuda:
+              x = x.to(DEVICE)
+              y = y.to(DEVICE)
+              x_len = x_len.to(DEVICE)
+              len_oovs = len_oovs.to(DEVICE)
+          total_num = len(val_dataloader)
+      
+          loss = model(x, x_len, y, len_oovs, batch=batch, num_batches=total_num, teacher_forcing=True)
+      ```
 
 
 
+### 模型训练
+
+-   思路：
+    -   创建PGN模型对象，初始化字典类，加载训练集DataLoader、验证器DataLoader
+    -   外层for循环 控制epoch多少轮，内层for循环 控制多少批次数，进行模型训练
+        -   去一个批次的数据
+        -   梯度清零
+        -   给模型喂批次数据，求损失
+        -   反向传播、更新梯度
+    -   其他辅助打印信息：每100个批次辅助信息损失信息；每轮训练打印损失信息
 
 
 
+模型训练 1个epoch 1小时
 
 
+
+<img src=".\site\train1.png" width = "100%" />
+
+### 5 模型预测
+
+-   思路：
+    -   随机取一条测试数据
+    -   将原始文本映射成数字化张量（source2ids()) 得到word2id列表、oov列表
+    -   将数据通过encode进行编码，得到中间语义张量C、最后隐藏层输出
+    -   对数据按照时间步进行解码，生成摘要信息
+        -   每一个时间步：通过注意力机制，查询张量q的注意力权重、q的注意力结果表示
+        -   每一个时间步：通过decode解码，求查询张量的最终单词分布
+        -   每一个时间步：通过贪心策略，进行字符预测
+        -   最终循环结束得到：解码后的摘要数据
+    -   解码后的摘要数据进行id2word，文本进行显示
 
 
 
