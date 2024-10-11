@@ -1,3 +1,140 @@
+## 改进v1.6.0（已完结2024.10.6）
+
+#### 训练策略的优化- Scheduled sampling (计划采样 )优化策略
+
+ -  为什么需要ss计划采样：
+    - 在生成式模型训练阶段, 常采用Teacher-forcing的策略辅助模型更快的收敛。但一直使用Teacher-forcing的策略, 会造成训练和预测的输入样本分布不一致, 也就是著名的"Exposure bias"（曝光偏差）。
+    - 说白了：训练阶段样本的输入，与预测阶段样本的输入策略不一致。
+
+ -  如何缓解"Exposure bias"（曝光偏差）
+    - 使用Scheduled Sampling (计划采样 ）。
+    - 训练阶段，混合使用ground truth和decoder predict；开始时多用Teacher-forcing的策略，后期时少用Teacher-forcing的策略
+    - eg：就像Admin策略：学习率从大到小进行调整 
+
+#### 训练策略的优化- Weight tying优化策略
+
+ -  为什么需要Weight tying(权重绑定)？
+    - Encoder和Decoder的词嵌入不一致，会导致来“Exposure bias"问题
+ -  解决方法
+    - Encoder和Decoder的embedding权重矩阵进行共享
+    - 策略有效性分析:
+      - 对embedding权重矩阵进行共享, 使得Encoder和Decoder的输入词向量表达完全相同了, 一定程度上可以缓解"Exposure bias"
+
+## 改进v1.5.3
+
+- 单词替换法
+- 回译数据法
+- 半监督学习法
+
+TF-IDF算法的计算公式
+
+-   词频(Term Frequency)
+    -   TF = 某个词在文章中出现的次数/该文章的总词数
+-   逆文档频率(Inverse Document Frequency）
+    -   IDF = log(语料库的文档总数/(包含该单词的文档数 + 1))
+-   TFIDF = TF * IDF
+
+```python
+# 3 编写辅助工具函数
+# word可以通过count得到, count可以通过countlist得到
+# count[word]：每个单词的词频, sum(count.values())：整个句子的单词总数
+def tf(word, count):  # 每个单词的词频 / 该文档的总词数
+    return count[word] / sum(count.values())
+
+# 统计的是含有该单词的句子数
+def n_containing(word, count_list):
+    return sum(1 for count in count_list if word in count)
+
+# len(count_list)是指句子的总数
+# n_containing(word, count_list)是指含有该单词的句子的总数, 加1是为了防止分母为0
+def idf(word, count_list):  #  ( 文档总数 ) / ( 包含该单词的文档数+1 )
+    return math.log(len(count_list) / (1 + n_containing(word, count_list)))
+
+# 将tf和idf相乘
+def tfidf(word, count, count_list):
+    return tf(word, count) * idf(word, count_list)
+```
+
+#### 数据增强优化法-回译数据法
+
+-   步骤1：对样本数据进行回译
+    -   可以融合原始样本+回译后的样本
+
+
+
+-   步骤2：模型训练、模型评估、模型预测
+    -   模型训练文件：对于baseline-6模型，需要更改训练数据集，变成 回译后的 数据文件
+    -   模型预测文件：需要将 训练数据集 更改为 变成 回译后的 数据文件
+-   注意
+    -   若数据质量不高，回译后的数据质量会更不好！
+
+#### 数据增强优化法- 半监督学习法
+
+ -  概念：当我们已经训练出一个文本生成模型后, 可以利用这个模型为原始训练集中的abstract生成新的article, 将这个新生成的article作为新样本的source document, 继续训练模型.
+    - （1）已经有了一个模型
+      - x为source，y为标签。用y标签通过模型生成z
+        - （z，y）组合成新的样本
+ -  好处：
+    - 能增加样本 
+      - 在监督的语料上，再生一个语料，不用人工去标注。半监督（在人工的基础上，用程序再生成一半）
+ -  不足：
+    - 需要现有一个模型，在数据很少的情况上有一个很好地模型是比较困难的。
+      - 若数据很烂、模型很烂。烂Y生成烂的Z；（Z、Y）组合后用比较烂的模型，做更烂的预测。死循环！
+      - 模型调优的后期调优迭代
+
+## 改进v1.4.2
+
+#### beam-search的评分优化
+
+![image-20241011103050470](site\image-20241011103050470.png)
+
+![image-20241011103131135](site\image-20241011103131135.png)
+
+#### 小顶堆heapq - 完成预测结果的筛选
+
+```python
+'''
+堆的定义：
+1 堆是一种特殊的数据结构，一个容器，里面存k个数据。根节点最大、最小。
+  几万条数据，都扔给堆容器，堆容器可以筛选出k个最大值或者k个最小值
+  小顶堆能把每个时间步的预测值进行筛选，保留k个最大值（eg：保留3个最大值）
+  
+2  python中heapq的使用
+    列出一些常见的用法：
+    heap = []               # 建立一个常见的堆
+    heappush(heap,item)     # 往堆中插入一条新的值
+    item = heappop(heap)    #弹出最小的值
+    item = heap[0]          #查看堆中最小的值，不弹出
+    heapify(x)              #将一个列表转为堆
+    heappoppush()           #弹出最小的值，并且将新的值插入其中
+    
+    item = heapreplace(heap,item)   
+                            #弹出一个最小的值，然后将item插入到堆当中。
+                            堆的整体的结构不会发生改变。
+                            
+    merge()                 #将多个堆进行合并    
+    nlargest(n , iterbale, key=None)
+                            从堆中找出做大的N个数，key的作用和sorted()方法里面的key类似，
+                            用列表元素的某个属性和函数作为关键字
+'''
+```
+
+## 改进v1.3.2
+
+#### PGN + coverage的优化模型
+
+![image-20241011102748180](site\image-20241011102748180.png)
+
+ 引入覆盖损失.
+
+​	定义覆盖损失covloss: 采用第一步中的累加和, 还有当前时间步的注意力值的较小值.
+
+​	作用: 用以惩罚将注意力过多的重复分配到同一位置.
+
+选择attention_weights和coverage_vector中小的一项
+
+![image-20241011102940391](site\image-20241011102940391.png)
+
 ## **改进V1.2.2**
 
 ------
