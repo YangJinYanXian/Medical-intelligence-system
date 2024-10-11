@@ -86,9 +86,9 @@ def tfidf(word, count, count_list):
 
 #### beam-search的评分优化
 
-![image-20241011103050470](.\site\image-20241011103050470.png)
+<img src=".\site\image-20241011103050470.png" width = "60%" />
 
-![image-20241011103131135](.\site\image-20241011103131135.png)
+<img src=".\site\image-20241011103131135.png" width = "60%" />
 
 #### 小顶堆heapq - 完成预测结果的筛选
 
@@ -133,7 +133,7 @@ def tfidf(word, count, count_list):
 
 选择attention_weights和coverage_vector中小的一项
 
-<img src=".\site\image-20241011102940391.png" width = "100%" />
+<img src=".\site\image-20241011102940391.png" width = "60%" />
 
 ## **改进V1.2.2**
 
