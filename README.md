@@ -86,9 +86,9 @@ def tfidf(word, count, count_list):
 
 #### beam-search的评分优化
 
-![image-20241011103050470](site\image-20241011103050470.png)
+![image-20241011103050470](.\site\image-20241011103050470.png)
 
-![image-20241011103131135](site\image-20241011103131135.png)
+![image-20241011103131135](.\site\image-20241011103131135.png)
 
 #### 小顶堆heapq - 完成预测结果的筛选
 
@@ -123,7 +123,7 @@ def tfidf(word, count, count_list):
 
 #### PGN + coverage的优化模型
 
-![image-20241011102748180](site\image-20241011102748180.png)
+<img src=".\site\image-20241011102748180.png" width = "100%" />
 
  引入覆盖损失.
 
@@ -133,7 +133,7 @@ def tfidf(word, count, count_list):
 
 选择attention_weights和coverage_vector中小的一项
 
-![image-20241011102940391](site\image-20241011102940391.png)
+<img src=".\site\image-20241011102940391.png" width = "100%" />
 
 ## **改进V1.2.2**
 
